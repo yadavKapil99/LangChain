@@ -1,0 +1,1565 @@
+============================================================
+LANGCHAIN JS - STRUCTURED OUTPUT
+============================================================
+
+1. WHAT IS STRUCTURED OUTPUT?
+------------------------------------------------------------
+
+Structured output means telling the LLM:
+
+"Return the answer in a specific structure/schema."
+
+Normally, an LLM returns free-form text:
+
+    Kapil is a 23-year-old software developer.
+    He knows JavaScript, Node.js and React.
+
+This is difficult for a backend application to reliably process.
+
+With structured output, we can ask the LLM to return:
+
+    {
+        name: "Kapil",
+        age: 23,
+        role: "Software Developer",
+        skills: ["JavaScript", "Node.js", "React"]
+    }
+
+Now JavaScript can directly work with the result.
+
+Example:
+
+    result.name
+    result.age
+    result.skills
+
+
+============================================================
+2. WHY DO WE NEED STRUCTURED OUTPUT?
+============================================================
+
+Suppose we ask an LLM:
+
+    "Extract the person's name, age and skills."
+
+Normal output could be:
+
+    "The person's name is Kapil. He is 23 years old
+     and has experience with JavaScript and Node.js."
+
+The format can change every time.
+
+Sometimes:
+
+    Name: Kapil
+    Age: 23
+    Skills: JavaScript, Node.js
+
+Sometimes:
+
+    Kapil is 23 and knows JavaScript.
+
+Parsing this manually is unreliable.
+
+Structured output gives us a predictable structure.
+
+
+============================================================
+3. BASIC LANGCHAIN STRUCTURED OUTPUT
+============================================================
+
+First install Zod:
+
+    npm install zod
+
+
+Import:
+
+    import { z } from "zod";
+
+
+Create a schema:
+
+    const personSchema = z.object({
+        name: z.string(),
+        age: z.number(),
+        skills: z.array(z.string()),
+    });
+
+
+Give the schema to the LLM:
+
+    const structuredLLM = llm.withStructuredOutput(personSchema);
+
+
+Call the model:
+
+    const result = await structuredLLM.invoke(
+        "Kapil is 23 years old and knows JavaScript, Node.js and React."
+    );
+
+
+Result:
+
+    {
+        name: "Kapil",
+        age: 23,
+        skills: [
+            "JavaScript",
+            "Node.js",
+            "React"
+        ]
+    }
+
+
+============================================================
+4. NORMAL LLM VS STRUCTURED LLM
+============================================================
+
+NORMAL LLM:
+
+    const response = await llm.invoke(
+        "Tell me about Kapil"
+    );
+
+Output:
+
+    response.content
+
+Usually:
+
+    "Kapil is a software developer..."
+
+
+STRUCTURED LLM:
+
+    const structuredLLM =
+        llm.withStructuredOutput(schema);
+
+    const response =
+        await structuredLLM.invoke("...");
+
+
+Output:
+
+    {
+        name: "Kapil",
+        age: 23,
+        skills: [...]
+    }
+
+
+The important difference:
+
+NORMAL OUTPUT
+-------------
+    Usually free-form AIMessage/text.
+
+STRUCTURED OUTPUT
+-----------------
+    JavaScript object matching your schema.
+
+
+============================================================
+5. ZOD
+============================================================
+
+Zod is a JavaScript/TypeScript schema validation library.
+
+LangChain can use Zod schemas to describe the structure
+we want from the LLM.
+
+Example:
+
+    const schema = z.object({
+        name: z.string(),
+        age: z.number()
+    });
+
+
+This means:
+
+    name MUST be a string.
+
+    age MUST be a number.
+
+
+Conceptually:
+
+    {
+        name: string,
+        age: number
+    }
+
+
+============================================================
+6. z.string()
+============================================================
+
+Used when a value should be a string.
+
+Example:
+
+    const schema = z.object({
+        name: z.string()
+    });
+
+
+Valid:
+
+    {
+        name: "Kapil"
+    }
+
+
+Invalid:
+
+    {
+        name: 123
+    }
+
+
+More examples:
+
+    email: z.string()
+
+    city: z.string()
+
+    role: z.string()
+
+    description: z.string()
+
+
+============================================================
+7. z.number()
+============================================================
+
+Used for numbers.
+
+Example:
+
+    const schema = z.object({
+        age: z.number()
+    });
+
+
+Valid:
+
+    {
+        age: 23
+    }
+
+
+Invalid:
+
+    {
+        age: "23"
+    }
+
+
+Other examples:
+
+    salary: z.number()
+
+    experience: z.number()
+
+    score: z.number()
+
+
+============================================================
+8. z.boolean()
+============================================================
+
+Used for true/false.
+
+Example:
+
+    const schema = z.object({
+        isDeveloper: z.boolean()
+    });
+
+
+Valid:
+
+    {
+        isDeveloper: true
+    }
+
+
+Also valid:
+
+    {
+        isDeveloper: false
+    }
+
+
+Invalid:
+
+    {
+        isDeveloper: "true"
+    }
+
+
+============================================================
+9. z.array()
+============================================================
+
+Used when the value should be an array.
+
+Example:
+
+    skills: z.array(z.string())
+
+
+Expected:
+
+    {
+        skills: [
+            "JavaScript",
+            "Node.js",
+            "React"
+        ]
+    }
+
+
+The important part is:
+
+    z.array(z.string())
+
+
+It means:
+
+    Array of strings.
+
+
+Array of numbers:
+
+    marks: z.array(z.number())
+
+
+Example:
+
+    {
+        marks: [80, 90, 75]
+    }
+
+
+Array of booleans:
+
+    values: z.array(z.boolean())
+
+
+============================================================
+10. z.object()
+============================================================
+
+Used to create an object/schema.
+
+Example:
+
+    const personSchema = z.object({
+        name: z.string(),
+        age: z.number(),
+        role: z.string()
+    });
+
+
+Expected:
+
+    {
+        name: "Kapil",
+        age: 23,
+        role: "Developer"
+    }
+
+
+z.object() is one of the MOST IMPORTANT Zod types
+for structured output.
+
+
+============================================================
+11. NESTED OBJECTS
+============================================================
+
+You can create objects inside objects.
+
+Example:
+
+    const userSchema = z.object({
+        name: z.string(),
+
+        address: z.object({
+            city: z.string(),
+            country: z.string()
+        })
+    });
+
+
+Expected:
+
+    {
+        name: "Kapil",
+
+        address: {
+            city: "Gurugram",
+            country: "India"
+        }
+    }
+
+
+Another example:
+
+    const employeeSchema = z.object({
+        name: z.string(),
+
+        job: z.object({
+            title: z.string(),
+            company: z.string(),
+            experience: z.number()
+        })
+    });
+
+
+Expected:
+
+    {
+        name: "Kapil",
+
+        job: {
+            title: "Software Developer",
+            company: "ABC",
+            experience: 2
+        }
+    }
+
+
+============================================================
+12. z.enum()
+============================================================
+
+Used when a value should be one of a fixed list.
+
+Example:
+
+    status: z.enum([
+        "APPROVED",
+        "REJECTED",
+        "PENDING"
+    ])
+
+
+Expected:
+
+    {
+        status: "APPROVED"
+    }
+
+
+or:
+
+    {
+        status: "REJECTED"
+    }
+
+
+or:
+
+    {
+        status: "PENDING"
+    }
+
+
+But:
+
+    {
+        status: "MAYBE"
+    }
+
+is not valid.
+
+
+Very useful for:
+
+    status
+    role
+    priority
+    category
+    nextStep
+    loanStatus
+
+
+Example:
+
+    const loanSchema = z.object({
+        customerName: z.string(),
+
+        status: z.enum([
+            "APPROVED",
+            "REJECTED",
+            "PENDING"
+        ])
+    });
+
+
+============================================================
+13. .optional()
+============================================================
+
+Makes a field optional.
+
+Example:
+
+    const schema = z.object({
+        name: z.string(),
+        age: z.number().optional()
+    });
+
+
+This is valid:
+
+    {
+        name: "Kapil"
+    }
+
+
+This is also valid:
+
+    {
+        name: "Kapil",
+        age: 23
+    }
+
+
+The important difference:
+
+    optional()
+
+means the field can be completely missing.
+
+
+============================================================
+14. .nullable()
+============================================================
+
+Allows a value to be null.
+
+Example:
+
+    const schema = z.object({
+        age: z.number().nullable()
+    });
+
+
+Valid:
+
+    {
+        age: 23
+    }
+
+
+Also valid:
+
+    {
+        age: null
+    }
+
+
+Difference:
+
+    optional()
+        -> field can be missing
+
+    nullable()
+        -> field can exist with null
+
+
+============================================================
+15. optional() VS nullable()
+============================================================
+
+optional():
+
+    age: z.number().optional()
+
+
+Valid:
+
+    {}
+
+
+nullable():
+
+    age: z.number().nullable()
+
+
+Valid:
+
+    {
+        age: null
+    }
+
+
+optional + nullable:
+
+    age: z.number().nullable().optional()
+
+
+Allows:
+
+    age: 23
+
+    age: null
+
+    age not present
+
+
+============================================================
+16. .default()
+============================================================
+
+Used to provide a default value.
+
+Example:
+
+    const schema = z.object({
+        name: z.string(),
+        role: z.string().default("user")
+    });
+
+
+If role isn't provided, default can be:
+
+    "user"
+
+
+Example:
+
+    {
+        name: "Kapil",
+        role: "user"
+    }
+
+
+============================================================
+17. .describe()
+============================================================
+
+Used to describe what a field means.
+
+Example:
+
+    const schema = z.object({
+        name: z
+            .string()
+            .describe("Full name of the person"),
+
+        age: z
+            .number()
+            .describe("Age of the person in years")
+    });
+
+
+This provides additional information about the field's
+intended meaning.
+
+Useful when the schema contains fields that could be
+ambiguous.
+
+
+============================================================
+18. z.literal()
+============================================================
+
+Used when a field must contain one exact value.
+
+Example:
+
+    type: z.literal("employee")
+
+
+Valid:
+
+    {
+        type: "employee"
+    }
+
+
+Invalid:
+
+    {
+        type: "admin"
+    }
+
+
+Another example:
+
+    country: z.literal("India")
+
+
+Only:
+
+    "India"
+
+is accepted.
+
+
+============================================================
+19. z.union()
+============================================================
+
+Used when a value can have multiple possible types.
+
+Example:
+
+    id: z.union([
+        z.string(),
+        z.number()
+    ])
+
+
+Both can be valid:
+
+    {
+        id: "123"
+    }
+
+
+and:
+
+    {
+        id: 123
+    }
+
+
+Conceptually:
+
+    id = string OR number
+
+
+============================================================
+20. z.record()
+============================================================
+
+Used when you don't know the exact object keys beforehand.
+
+Example:
+
+    metadata: z.record(
+        z.string(),
+        z.string()
+    )
+
+
+Possible result:
+
+    {
+        metadata: {
+            source: "website",
+            department: "engineering",
+            country: "India"
+        }
+    }
+
+
+The keys can be dynamic.
+
+Example:
+
+    {
+        metadata: {
+            source: "website",
+            city: "Gurugram",
+            role: "developer"
+        }
+    }
+
+
+============================================================
+21. ARRAY OF OBJECTS
+============================================================
+
+Very important for real applications.
+
+Example:
+
+    const schema = z.object({
+        employees: z.array(
+            z.object({
+                name: z.string(),
+                role: z.string(),
+                experience: z.number()
+            })
+        )
+    });
+
+
+Expected:
+
+    {
+        employees: [
+            {
+                name: "Kapil",
+                role: "Software Developer",
+                experience: 2
+            },
+
+            {
+                name: "Rahul",
+                role: "Backend Developer",
+                experience: 3
+            }
+        ]
+    }
+
+
+This is extremely common in AI applications.
+
+
+============================================================
+22. COMPLETE BASIC EXAMPLE
+============================================================
+
+Code:
+
+    import dotenv from "dotenv";
+    import { ChatOpenAI } from "@langchain/openai";
+    import { z } from "zod";
+
+    dotenv.config();
+
+    const llm = new ChatOpenAI({
+        model: "openai/gpt-5.6-luna",
+        temperature: 0
+    });
+
+    const personSchema = z.object({
+        name: z.string(),
+        age: z.number(),
+        role: z.string(),
+        skills: z.array(z.string()),
+        isDeveloper: z.boolean()
+    });
+
+    const structuredLLM =
+        llm.withStructuredOutput(personSchema);
+
+    const result = await structuredLLM.invoke(`
+        My name is Kapil.
+        I am 23 years old.
+        I am a software developer.
+        I know JavaScript, Node.js and React.
+    `);
+
+    console.log(result);
+
+
+Expected result:
+
+    {
+        name: "Kapil",
+        age: 23,
+        role: "software developer",
+        skills: [
+            "JavaScript",
+            "Node.js",
+            "React"
+        ],
+        isDeveloper: true
+    }
+
+
+============================================================
+23. STRUCTURED OUTPUT WITH DESCRIPTION
+============================================================
+
+Example:
+
+    const personSchema = z.object({
+        name: z
+            .string()
+            .describe("Full name of the person"),
+
+        age: z
+            .number()
+            .describe("Age in years"),
+
+        skills: z
+            .array(z.string())
+            .describe("Technical skills of the person"),
+
+        role: z
+            .string()
+            .describe("Current professional role")
+    });
+
+
+Then:
+
+    const structuredLLM =
+        llm.withStructuredOutput(personSchema);
+
+
+Then:
+
+    const result =
+        await structuredLLM.invoke(
+            "Kapil is a 23 year old software developer..."
+        );
+
+
+============================================================
+24. REAL BACKEND EXAMPLE - RESUME EXTRACTION
+============================================================
+
+Imagine an Express API:
+
+    POST /analyze-resume
+
+
+We want the AI to extract:
+
+    name
+    experience
+    skills
+    education
+
+
+Schema:
+
+    const resumeSchema = z.object({
+
+        name: z.string(),
+
+        experience: z.number(),
+
+        skills: z.array(z.string()),
+
+        education: z.object({
+            degree: z.string(),
+            branch: z.string()
+        })
+    });
+
+
+Create structured model:
+
+    const resumeExtractor =
+        llm.withStructuredOutput(resumeSchema);
+
+
+Call:
+
+    const result =
+        await resumeExtractor.invoke(resumeText);
+
+
+Possible result:
+
+    {
+        name: "Kapil Yadav",
+
+        experience: 2,
+
+        skills: [
+            "JavaScript",
+            "Node.js",
+            "Express",
+            "PostgreSQL",
+            "React"
+        ],
+
+        education: {
+            degree: "B.Tech",
+            branch: "Computer Science"
+        }
+    }
+
+
+Now Express can directly use:
+
+    result.name
+
+    result.experience
+
+    result.skills
+
+    result.education.degree
+
+
+============================================================
+25. REAL BACKEND EXAMPLE - LOAN UNDERWRITING
+============================================================
+
+Structured output can also be used for AI underwriting.
+
+Example:
+
+    const underwritingSchema = z.object({
+
+        decision: z.enum([
+            "APPROVE",
+            "REJECT",
+            "REVIEW"
+        ]),
+
+        riskScore: z.number(),
+
+        reasons: z.array(z.string()),
+
+        incomeVerified: z.boolean(),
+
+        employmentStable: z.boolean()
+    });
+
+
+Structured LLM:
+
+    const underwritingLLM =
+        llm.withStructuredOutput(
+            underwritingSchema
+        );
+
+
+Result:
+
+    {
+        decision: "REVIEW",
+
+        riskScore: 62,
+
+        reasons: [
+            "Income is below requested loan threshold",
+            "Employment history is limited"
+        ],
+
+        incomeVerified: true,
+
+        employmentStable: false
+    }
+
+
+Your backend can then use:
+
+    result.decision
+
+    result.riskScore
+
+    result.reasons
+
+
+============================================================
+26. IMPORTANT: SCHEMA IS NOT THE PROMPT
+============================================================
+
+These are different things.
+
+PROMPT:
+
+    Tells the LLM what task to perform.
+
+Example:
+
+    "Analyze this resume and extract the candidate information."
+
+
+SCHEMA:
+
+    Tells the LLM what STRUCTURE the result should have.
+
+Example:
+
+    const schema = z.object({
+        name: z.string(),
+        skills: z.array(z.string())
+    });
+
+
+So:
+
+    PROMPT
+       +
+    SCHEMA
+       +
+    LLM
+       =
+    STRUCTURED RESULT
+
+
+============================================================
+27. STRUCTURED OUTPUT WITH CHATPROMPTTEMPLATE
+============================================================
+
+You can combine structured output with prompts.
+
+Example:
+
+    import {
+        ChatPromptTemplate
+    } from "@langchain/core/prompts";
+
+    const prompt =
+        ChatPromptTemplate.fromMessages([
+            [
+                "system",
+                "Extract information from the user's text."
+            ],
+
+            [
+                "human",
+                "{userInput}"
+            ]
+        ]);
+
+
+Schema:
+
+    const userSchema = z.object({
+        name: z.string(),
+        age: z.number(),
+        role: z.string()
+    });
+
+
+Structured model:
+
+    const structuredLLM =
+        llm.withStructuredOutput(userSchema);
+
+
+Then:
+
+    const chain =
+        prompt.pipe(structuredLLM);
+
+
+Invoke:
+
+    const result = await chain.invoke({
+        userInput:
+            "My name is Kapil. I am 23 and I am a developer."
+    });
+
+
+Result:
+
+    {
+        name: "Kapil",
+        age: 23,
+        role: "developer"
+    }
+
+
+============================================================
+28. IMPORTANT LANGCHAIN FLOW
+============================================================
+
+The flow is:
+
+    User Input
+        |
+        v
+    ChatPromptTemplate
+        |
+        v
+    LLM
+        |
+        v
+    Structured Output
+        |
+        v
+    JavaScript Object
+
+
+With pipe:
+
+    const chain =
+        prompt
+            .pipe(structuredLLM);
+
+
+Then:
+
+    chain.invoke(...)
+
+
+This is the basic LangChain Runnable pattern.
+
+
+============================================================
+29. STRUCTURED OUTPUT AND .invoke()
+============================================================
+
+With normal LLM:
+
+    const response =
+        await llm.invoke("Hello");
+
+
+Usually:
+
+    response.content
+
+
+With structured LLM:
+
+    const response =
+        await structuredLLM.invoke("Hello");
+
+
+You generally get the structured result directly:
+
+    response.name
+    response.age
+    response.skills
+
+
+So structured output changes what you receive from the
+model call.
+
+
+============================================================
+30. IMPORTANT ZOD TYPES CHEAT SHEET
+============================================================
+
+STRING:
+
+    z.string()
+
+
+NUMBER:
+
+    z.number()
+
+
+BOOLEAN:
+
+    z.boolean()
+
+
+OBJECT:
+
+    z.object({
+        name: z.string()
+    })
+
+
+ARRAY:
+
+    z.array(z.string())
+
+
+ENUM:
+
+    z.enum([
+        "A",
+        "B",
+        "C"
+    ])
+
+
+OPTIONAL:
+
+    z.string().optional()
+
+
+NULLABLE:
+
+    z.string().nullable()
+
+
+DEFAULT:
+
+    z.string().default("user")
+
+
+LITERAL:
+
+    z.literal("employee")
+
+
+UNION:
+
+    z.union([
+        z.string(),
+        z.number()
+    ])
+
+
+RECORD:
+
+    z.record(
+        z.string(),
+        z.string()
+    )
+
+
+DESCRIPTION:
+
+    z.string().describe(
+        "Full name of the person"
+    )
+
+
+============================================================
+31. MOST IMPORTANT COMBINATIONS
+============================================================
+
+ARRAY OF STRINGS:
+
+    z.array(z.string())
+
+
+ARRAY OF NUMBERS:
+
+    z.array(z.number())
+
+
+ARRAY OF OBJECTS:
+
+    z.array(
+        z.object({
+            name: z.string(),
+            age: z.number()
+        })
+    )
+
+
+OPTIONAL STRING:
+
+    z.string().optional()
+
+
+NULLABLE NUMBER:
+
+    z.number().nullable()
+
+
+OPTIONAL + NULLABLE:
+
+    z.number()
+        .nullable()
+        .optional()
+
+
+ENUM:
+
+    z.enum([
+        "APPROVED",
+        "REJECTED",
+        "PENDING"
+    ])
+
+
+NESTED OBJECT:
+
+    z.object({
+        user: z.object({
+            name: z.string(),
+            age: z.number()
+        })
+    })
+
+
+============================================================
+32. STRUCTURED OUTPUT MENTAL MODEL
+============================================================
+
+Think of:
+
+    z.object()
+
+as defining the shape of the data.
+
+
+For example:
+
+    const schema = z.object({
+        name: z.string(),
+        age: z.number(),
+        skills: z.array(z.string())
+    });
+
+
+Means:
+
+    {
+        name: STRING,
+        age: NUMBER,
+        skills: ARRAY OF STRINGS
+    }
+
+
+Then:
+
+    llm.withStructuredOutput(schema)
+
+means:
+
+    "LLM, return your answer according to this schema."
+
+
+Then:
+
+    structuredLLM.invoke(...)
+
+returns the structured result.
+
+
+============================================================
+33. VERY IMPORTANT FOR AI BACKEND DEVELOPMENT
+============================================================
+
+Without structured output:
+
+    LLM
+     |
+     v
+    Text
+     |
+     v
+    Manual parsing
+     |
+     v
+    Object
+
+
+With structured output:
+
+    LLM
+     |
+     v
+    Structured Schema
+     |
+     v
+    JavaScript Object
+
+
+This makes AI much easier to integrate with:
+
+    Express
+    REST APIs
+    PostgreSQL
+    MongoDB
+    Redis
+    React
+    Microservices
+    Background jobs
+
+
+============================================================
+34. SIMPLE INTERVIEW DEFINITION
+============================================================
+
+If an interviewer asks:
+
+"What is structured output in LangChain?"
+
+Answer:
+
+"Structured output allows us to constrain an LLM's response
+to a predefined schema instead of receiving arbitrary
+free-form text. In LangChain JS, we can define the schema
+using Zod and pass it to withStructuredOutput(). The model
+then returns data in a predictable structure that our
+application can directly consume."
+
+
+============================================================
+35. THE 5 THINGS TO REMEMBER
+============================================================
+
+1.
+
+    import { z } from "zod";
+
+
+2.
+
+    const schema = z.object({
+        name: z.string(),
+        age: z.number()
+    });
+
+
+3.
+
+    const structuredLLM =
+        llm.withStructuredOutput(schema);
+
+
+4.
+
+    const result =
+        await structuredLLM.invoke(input);
+
+
+5.
+
+    result.name
+    result.age
+
+
+That is the core of LangChain structured output.
+
+
+============================================================
+36. QUICK FINAL EXAMPLE
+============================================================
+
+    import dotenv from "dotenv";
+    import { ChatOpenAI } from "@langchain/openai";
+    import { z } from "zod";
+
+    dotenv.config();
+
+    const llm = new ChatOpenAI({
+        model: "openai/gpt-5.6-luna",
+        temperature: 0
+    });
+
+    const schema = z.object({
+        name: z.string(),
+        age: z.number(),
+        role: z.enum([
+            "developer",
+            "designer",
+            "manager",
+            "student"
+        ]),
+        skills: z.array(z.string()),
+        isExperienced: z.boolean()
+    });
+
+    const structuredLLM =
+        llm.withStructuredOutput(schema);
+
+    const result =
+        await structuredLLM.invoke(`
+            My name is Kapil.
+            I am 23 years old.
+            I work as a software developer.
+            I know JavaScript, Node.js and React.
+            I have professional experience.
+        `);
+
+    console.log(result);
+
+
+Possible output:
+
+    {
+        name: "Kapil",
+        age: 23,
+        role: "developer",
+        skills: [
+            "JavaScript",
+            "Node.js",
+            "React"
+        ],
+        isExperienced: true
+    }
+
+
+============================================================
+END
+============================================================

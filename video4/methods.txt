@@ -1,0 +1,535 @@
+# LangChain Daily-Use Methods
+
+# JavaScript + OpenRouter
+
+## 1. PromptTemplate
+
+Create a reusable prompt with variables.
+
+```js
+const prompt = PromptTemplate.fromTemplate(`
+Explain {topic} in {length} length.
+`);
+```
+
+### format()
+
+Fill the variables in the prompt.
+
+```js
+const result = await prompt.format({
+  topic: "JavaScript",
+  length: "Medium"
+});
+```
+
+```text
+format() → PromptTemplate → Final prompt
+```
+
+---
+
+## 2. ChatPromptTemplate
+
+Create prompts using system and user messages.
+
+```js
+const prompt = ChatPromptTemplate.fromMessages([
+  ["system", "You are a helpful assistant."],
+  ["human", "Explain {topic}."]
+]);
+```
+
+### formatMessages()
+
+Fill variables and create chat messages.
+
+```js
+const messages = await prompt.formatMessages({
+  topic: "JWT"
+});
+```
+
+---
+
+# 3. LLM
+
+Create the model.
+
+```js
+const llm = new ChatOpenAI({
+  model: "your-model",
+  temperature: 0,
+  apiKey: process.env.OPENROUTER_API_KEY,
+  configuration: {
+    baseURL: "https://openrouter.ai/api/v1"
+  }
+});
+```
+
+---
+
+# 4. invoke()
+
+MOST COMMON METHOD.
+
+Execute the model or chain once.
+
+```js
+const response = await llm.invoke(
+  "Explain JavaScript closures."
+);
+
+console.log(response.content);
+```
+
+With a prompt:
+
+```js
+const response = await chain.invoke({
+  topic: "JavaScript closures"
+});
+```
+
+```text
+invoke() → One input → One output
+```
+
+---
+
+# 5. pipe()
+
+Connect components together.
+
+```js
+const chain = prompt.pipe(llm);
+```
+
+Example:
+
+```js
+const chain = prompt
+  .pipe(llm)
+  .pipe(parser);
+```
+
+```text
+Prompt
+  ↓
+LLM
+  ↓
+Parser
+```
+
+---
+
+# 6. batch()
+
+Process multiple inputs.
+
+```js
+const results = await chain.batch([
+  {
+    topic: "JavaScript"
+  },
+  {
+    topic: "React"
+  },
+  {
+    topic: "Node.js"
+  }
+]);
+```
+
+```text
+batch() → Multiple inputs → Multiple outputs
+```
+
+Use when you need to process many requests.
+
+---
+
+# 7. stream()
+
+Get the response piece by piece.
+
+```js
+const stream = await chain.stream({
+  topic: "JavaScript"
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.content);
+}
+```
+
+```text
+stream() → Output comes progressively
+```
+
+Commonly used for ChatGPT-style streaming responses.
+
+---
+
+# 8. StringOutputParser
+
+Convert the AI message into a normal string.
+
+```js
+import { StringOutputParser }
+  from "@langchain/core/output_parsers";
+
+const parser = new StringOutputParser();
+
+const chain = prompt
+  .pipe(llm)
+  .pipe(parser);
+```
+
+Now:
+
+```js
+const result = await chain.invoke({
+  topic: "JWT"
+});
+
+console.log(result);
+```
+
+Instead of:
+
+```js
+AIMessage {
+  content: "JWT is..."
+}
+```
+
+you get:
+
+```text
+JWT is...
+```
+
+---
+
+# 9. withStructuredOutput()
+
+Ask the model to return structured data.
+
+```js
+const structuredLLM = llm.withStructuredOutput(schema);
+```
+
+Example result:
+
+```js
+{
+  name: "Kapil Dev",
+  role: "All-rounder",
+  matches: 356
+}
+```
+
+Very useful for APIs and backend applications.
+
+---
+
+# 10. withConfig()
+
+Add configuration/metadata to a chain.
+
+```js
+const chain = prompt
+  .pipe(llm)
+  .withConfig({
+    runName: "CricketSummary"
+  });
+```
+
+Mostly useful for tracing and debugging.
+
+---
+
+# 11. withRetry()
+
+Retry when an operation fails.
+
+```js
+const reliableChain = chain.withRetry({
+  stopAfterAttempt: 3
+});
+```
+
+Concept:
+
+```text
+Request
+   ↓
+Attempt 1 → Failed
+   ↓
+Attempt 2 → Failed
+   ↓
+Attempt 3 → Success
+```
+
+Useful for production applications.
+
+---
+
+# 12. withFallbacks()
+
+Use another model/chain if the first one fails.
+
+```js
+const llmWithFallback = primaryLLM.withFallbacks({
+  fallbacks: [fallbackLLM]
+});
+```
+
+Concept:
+
+```text
+Primary Model
+     ↓
+   Failed
+     ↓
+Fallback Model
+```
+
+---
+
+# 13. RunnableLambda
+
+Put your own JavaScript function inside a LangChain chain.
+
+```js
+const customFunction = new RunnableLambda({
+  func: async (input) => {
+    return input.toUpperCase();
+  }
+});
+```
+
+Then:
+
+```js
+const result = await customFunction.invoke("hello");
+
+console.log(result);
+```
+
+Output:
+
+```text
+HELLO
+```
+
+Useful when you need custom JavaScript logic inside a chain.
+
+---
+
+# 14. RunnableParallel
+
+Run multiple chains at the same time.
+
+```js
+const parallel = RunnableParallel.from({
+  summary: summaryChain,
+  sentiment: sentimentChain
+});
+```
+
+Then:
+
+```js
+const result = await parallel.invoke({
+  text: "This is a great product."
+});
+```
+
+Result:
+
+```js
+{
+  summary: "...",
+  sentiment: "positive"
+}
+```
+
+---
+
+# 15. RunnablePassthrough
+
+Pass the input without changing it.
+
+```js
+const passthrough = new RunnablePassthrough();
+
+const result = await passthrough.invoke("Hello");
+
+console.log(result);
+```
+
+Output:
+
+```text
+Hello
+```
+
+Mostly useful when building more complex chains.
+
+---
+
+# 16. partial()
+
+Fill some prompt variables beforehand.
+
+```js
+const prompt = PromptTemplate.fromTemplate(`
+You are a {role}.
+
+Explain {topic}.
+`);
+```
+
+Set `role` permanently:
+
+```js
+const fixedPrompt = await prompt.partial({
+  role: "Senior Software Engineer"
+});
+```
+
+Now:
+
+```js
+const result = await fixedPrompt.format({
+  topic: "Redis"
+});
+```
+
+---
+
+# 17. MessagesPlaceholder
+
+Insert dynamic chat history.
+
+```js
+const prompt = ChatPromptTemplate.fromMessages([
+  ["system", "You are a helpful assistant."],
+
+  new MessagesPlaceholder("history"),
+
+  ["human", "{question}"]
+]);
+```
+
+Useful for chatbots and conversational AI.
+
+---
+
+# MOST IMPORTANT DAILY METHODS
+
+If you are starting with LangChain, remember these first:
+
+```text
+1. PromptTemplate.fromTemplate()
+2. ChatPromptTemplate.fromMessages()
+3. format()
+4. formatMessages()
+5. invoke()
+6. pipe()
+7. batch()
+8. stream()
+9. StringOutputParser
+10. withStructuredOutput()
+```
+
+## Simple Mental Model
+
+```text
+                PROMPT
+                  ↓
+             format()
+                  ↓
+                 LLM
+                  ↓
+               invoke()
+                  ↓
+              RESPONSE
+```
+
+For a real chain:
+
+```text
+Prompt
+  ↓
+pipe()
+  ↓
+LLM
+  ↓
+pipe()
+  ↓
+Parser
+  ↓
+invoke()
+  ↓
+Final Result
+```
+
+## Daily Usage Priority
+
+```text
+★★★★★ invoke()
+★★★★★ pipe()
+★★★★★ PromptTemplate
+★★★★★ ChatPromptTemplate
+★★★★☆ format()
+★★★★☆ StringOutputParser
+★★★★☆ withStructuredOutput()
+★★★☆☆ stream()
+★★★☆☆ batch()
+★★☆☆☆ withRetry()
+★★☆☆☆ withFallbacks()
+★★☆☆☆ RunnableLambda
+★★☆☆☆ RunnableParallel
+★☆☆☆☆ RunnablePassthrough
+★☆☆☆☆ partial()
+```
+
+# Most Common Example
+
+```js
+const prompt = PromptTemplate.fromTemplate(`
+Explain {topic} in {length} length.
+`);
+
+const chain = prompt
+  .pipe(llm)
+  .pipe(new StringOutputParser());
+
+const result = await chain.invoke({
+  topic: "JavaScript Closures",
+  length: "Medium"
+});
+
+console.log(result);
+```
+
+This pattern:
+
+```text
+PromptTemplate
+      ↓
+     pipe()
+      ↓
+      LLM
+      ↓
+     pipe()
+      ↓
+StringOutputParser
+      ↓
+   invoke()
+```
+
+is the main pattern to understand first.

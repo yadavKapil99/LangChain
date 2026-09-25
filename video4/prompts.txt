@@ -1,0 +1,968 @@
+# DIFFERENT TYPES OF PROMPTS — LANGCHAIN + JAVASCRIPT
+
+## Common Setup
+
+```js
+import dotenv from "dotenv";
+import { ChatOpenAI } from "@langchain/openai";
+import { PromptTemplate } from "@langchain/core/prompts";
+
+dotenv.config();
+
+const llm = new ChatOpenAI({
+  model: "qwen/qwen3.8-27b",
+  temperature: 0.3,
+  max_completion_tokens: 500,
+
+  apiKey: process.env.OPENROUTER_API_KEY,
+
+  configuration: {
+    baseURL: "https://openrouter.ai/api/v1",
+  },
+});
+```
+
+---
+
+# 1. Zero-Shot Prompting
+
+Give the model an instruction without any example.
+
+```js
+const template = `
+Summarise the following cricket player:
+
+Player: {name}
+
+Keep the answer concise and professional.
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  name: "Virat Kohli",
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+
+
+
+
+
+
+
+---
+
+# 2. One-Shot Prompting
+
+Give the model **one example** of the expected behavior.
+
+```js
+const template = `
+Convert the sentence into a professional sentence.
+
+Example:
+Input: "this product is bad"
+Output: "The product does not meet the expected quality standards."
+
+Now convert:
+
+Input: "{text}"
+Output:
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  text: "the service was very slow",
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+
+
+
+
+---
+
+# 3. Few-Shot Prompting
+
+Give multiple examples.
+
+```js
+const template = `
+Classify the customer message as Positive, Negative, or Neutral.
+
+Examples:
+
+Message: "I absolutely love this product."
+Classification: Positive
+
+Message: "The product stopped working."
+Classification: Negative
+
+Message: "The product arrived yesterday."
+Classification: Neutral
+
+Now classify:
+
+Message: "{message}"
+Classification:
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  message: "The product works perfectly!",
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+### Idea
+
+```text
+Instruction + Examples → LLM → Consistent Answer
+```
+
+Very useful when you want the model to follow a particular pattern.
+
+---
+
+# 4. Role Prompting
+
+Tell the model what role/persona it should act as.
+
+```js
+const template = `
+You are a senior JavaScript developer.
+
+Explain the following topic to a beginner:
+
+Topic: {topic}
+
+Use simple language and provide a small example.
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  topic: "JavaScript Closures",
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+Examples:
+
+```text
+You are a senior developer.
+You are a teacher.
+You are a financial analyst.
+You are a customer support agent.
+You are a technical interviewer.
+```
+
+---
+
+# 5. Context Prompting
+
+Give the model additional information/context.
+
+```js
+const template = `
+Answer the question using ONLY the provided context.
+
+Context:
+{context}
+
+Question:
+{question}
+
+If the answer is not present in the context, say:
+"Insufficient information available."
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  context: `
+  Virat Kohli made his ODI debut in 2008.
+  He has represented India in international cricket.
+  `,
+
+  question: "When did Virat Kohli make his ODI debut?",
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+This is extremely important for **RAG applications**.
+
+```text
+User Question
+      ↓
+Retrieve Context
+      ↓
+Prompt + Context
+      ↓
+LLM
+      ↓
+Answer
+```
+
+---
+
+# 6. Constraint Prompting
+
+Tell the model what it **must or must not do**.
+
+```js
+const template = `
+Explain {topic}.
+
+Rules:
+- Maximum 100 words.
+- Use simple English.
+- Do not use unnecessary technical terms.
+- Give exactly 2 examples.
+- Do not make up information.
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  topic: "JavaScript Event Loop",
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+Constraints can control:
+
+```text
+Length
+Tone
+Number of points
+Language
+Allowed information
+Formatting
+```
+
+---
+
+# 7. Output Format Prompting
+
+Tell the model exactly how the answer should look.
+
+```js
+const template = `
+Analyse this cricket player:
+
+Player: {name}
+
+Return the answer in this format:
+
+Player: <name>
+IPL Matches: <number>
+ODI Matches: <number>
+Test Matches: <number>
+Best Performance: <text>
+Career Peak: <text>
+Career Downfall: <text>
+
+Do not add anything outside this format.
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  name: "Virat Kohli",
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+Useful when your backend needs predictable output.
+
+---
+
+# 8. Structured Output Prompting
+
+Instead of asking for normal text, ask for structured data.
+
+```js
+const template = `
+Extract information about this employee.
+
+Name: {name}
+Age: {age}
+Department: {department}
+
+Return the information as JSON with:
+name, age, department
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  name: "Rahul",
+  age: 25,
+  department: "Engineering",
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+Even better in LangChain:
+
+```js
+const structuredLlm = llm.withStructuredOutput({
+  name: "string",
+  age: "number",
+  department: "string",
+});
+
+const result = await structuredLlm.invoke(
+  "Rahul is 25 years old and works in Engineering."
+);
+
+console.log(result);
+```
+
+Useful for:
+
+```text
+APIs
+Database operations
+Forms
+Classification
+Extraction
+Agents
+```
+
+---
+
+# 9. Delimiter Prompting
+
+Separate different parts of your prompt clearly.
+
+```js
+const template = `
+Summarise the text between <text> and </text>.
+
+<text>
+{text}
+</text>
+
+Return only the summary.
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  text: `
+  JavaScript is a programming language commonly used
+  for web development and backend applications.
+  `,
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+Common delimiters:
+
+```text
+<text>...</text>
+
+<context>...</context>
+
+"""
+...
+"""
+
+--- START ---
+...
+--- END ---
+```
+
+Useful when prompts contain lots of data.
+
+---
+
+# 10. Negative Prompting
+
+Tell the model what **not** to do.
+
+```js
+const template = `
+Explain {topic}.
+
+Do:
+- Use simple English.
+- Give practical examples.
+
+Do NOT:
+- Make up information.
+- Give unrelated information.
+- Write a very long answer.
+- Use unnecessary jargon.
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  topic: "REST API",
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+Very useful when you want to reduce unwanted behavior.
+
+---
+
+# 11. Step-by-Step Prompting
+
+Ask the model to solve a problem in stages.
+
+```js
+const template = `
+Solve this programming problem:
+
+Problem:
+{problem}
+
+Follow these steps:
+
+1. Understand the problem.
+2. Explain the approach.
+3. Explain the time complexity.
+4. Explain the space complexity.
+5. Provide JavaScript code.
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  problem: "Find the largest element in an array.",
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+Useful for:
+
+```text
+Coding
+Math
+Debugging
+Analysis
+Planning
+```
+
+---
+
+# 12. Classification Prompt
+
+Ask the model to classify something into predefined categories.
+
+```js
+const template = `
+Classify the following customer message.
+
+Categories:
+- Complaint
+- Question
+- Feedback
+- Purchase
+
+Message:
+"{message}"
+
+Return ONLY the category.
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  message: "I want to know when my order will arrive.",
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+Output:
+
+```text
+Question
+```
+
+Common real-world uses:
+
+```text
+Spam detection
+Customer support
+Sentiment analysis
+Ticket routing
+Email classification
+```
+
+---
+
+# 13. Extraction Prompt
+
+Extract specific information from text.
+
+```js
+const template = `
+Extract the following information from the text:
+
+- Name
+- Email
+- Phone
+
+Text:
+{text}
+
+If information is unavailable, return null.
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  text: `
+  My name is Kapil.
+  You can contact me at kapil@example.com.
+  `,
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+Useful for:
+
+```text
+Invoices
+Emails
+Documents
+Applications
+KYC data
+Resume parsing
+```
+
+---
+
+# 14. Summarization Prompt
+
+Your cricket example is mainly a **summarization prompt + constraints + structured instructions**.
+
+```js
+const template = `
+Summarise the cricketer {name}.
+
+Explanation Length: {length}
+
+Include:
+1. Total matches in IPL, ODI, Test, T20 and Class A.
+2. Best performance in each category.
+3. Career peak and downfall.
+
+If information is unavailable, say:
+"Insufficient data available"
+
+Do not guess or make up information.
+
+Use a professional tone and keep the response concise.
+`;
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  name: "Suryakumar Yadav",
+  length: "Medium",
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+---
+
+# 15. Prompt Routing
+
+Different prompts depending on the user's request.
+
+```js
+const question = "Explain JavaScript closures";
+
+let template;
+
+if (question.includes("code")) {
+  template = `
+  You are a coding expert.
+  Provide JavaScript code for:
+  {question}
+  `;
+} else {
+  template = `
+  Explain this topic simply:
+  {question}
+  `;
+}
+
+const prompt = PromptTemplate.fromTemplate(template);
+
+const input = await prompt.format({
+  question,
+});
+
+const response = await llm.invoke(input);
+
+console.log(response.content);
+```
+
+Concept:
+
+```text
+             User Input
+                 ↓
+           Classify Request
+             ↙       ↘
+       Coding       General
+          ↓            ↓
+     Code Prompt   Explanation Prompt
+          ↓            ↓
+              LLM
+```
+
+Used heavily in AI applications.
+
+---
+
+# 16. Chat Prompt
+
+Instead of one large string, use system/user messages.
+
+```js
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+
+const prompt = ChatPromptTemplate.fromMessages([
+  [
+    "system",
+    "You are a professional cricket analyst."
+  ],
+  [
+    "human",
+    "Summarise the career of {player} in {length} length."
+  ]
+]);
+
+const messages = await prompt.formatMessages({
+  player: "Virat Kohli",
+  length: "Medium",
+});
+
+const response = await llm.invoke(messages);
+
+console.log(response.content);
+```
+
+Concept:
+
+```text
+System → defines behavior
+Human → user's request
+AI → previous model response, if needed
+```
+
+---
+
+# 17. Prompt + Streaming
+
+This is similar to YOUR example.
+
+```js
+const prompt = PromptTemplate.fromTemplate(`
+Explain {topic} in simple English.
+`);
+
+const input = await prompt.format({
+  topic: "JavaScript Event Loop",
+});
+
+const response = await llm.stream(input);
+
+for await (const chunk of response) {
+  process.stdout.write(chunk.content);
+}
+```
+
+Difference:
+
+```js
+await llm.invoke(input)
+```
+
+Waits for the complete response.
+
+```js
+await llm.stream(input)
+```
+
+Receives the response chunk-by-chunk.
+
+---
+
+# 18. Prompt + Chain
+
+Instead of manually doing:
+
+```text
+format()
+   ↓
+invoke()
+```
+
+you can create a chain.
+
+```js
+const prompt = PromptTemplate.fromTemplate(`
+Explain {topic} in {length} length.
+`);
+
+const chain = prompt.pipe(llm);
+
+const response = await chain.invoke({
+  topic: "JavaScript Closures",
+  length: "Medium",
+});
+
+console.log(response.content);
+```
+
+---
+
+# 19. Prompt + Parser
+
+Common production pattern:
+
+```js
+import { StringOutputParser } from "@langchain/core/output_parsers";
+
+const prompt = PromptTemplate.fromTemplate(`
+Explain {topic}.
+`);
+
+const chain = prompt
+  .pipe(llm)
+  .pipe(new StringOutputParser());
+
+const response = await chain.invoke({
+  topic: "JavaScript Closures",
+});
+
+console.log(response);
+```
+
+Flow:
+
+```text
+PromptTemplate
+      ↓
+     LLM
+      ↓
+OutputParser
+      ↓
+   String
+```
+
+---
+
+# 20. Your Cricket Prompt — What Techniques Are You Using?
+
+Your original prompt:
+
+```js
+const template = `
+Summarise the cricketer {name}.
+
+Explanation Length: {length}
+
+Include:
+1. Total matches in IPL, ODI, Test, T20 and Class A.
+2. Best performance in each category.
+3. Career peak and downfall.
+
+If information is unavailable, say "Insufficient data available" instead of guessing.
+
+Use a professional tone and keep the response concise.
+`;
+```
+
+This is NOT just one prompt technique.
+
+It combines multiple techniques:
+
+```text
+1. Instruction Prompting
+       ↓
+"Summarise the cricketer"
+
+2. Variable Prompting
+       ↓
+{name}
+{length}
+
+3. Structured Prompting
+       ↓
+1. ...
+2. ...
+3. ...
+
+4. Constraint Prompting
+       ↓
+"keep the response concise"
+
+5. Negative Prompting
+       ↓
+"do not guess"
+
+6. Fallback Instruction
+       ↓
+"Insufficient data available"
+
+7. Output/Tone Control
+       ↓
+"professional tone"
+
+8. Domain-specific Prompting
+       ↓
+IPL / ODI / Test / T20 / Class A
+```
+
+So in real projects, **you normally combine several prompt techniques together**.
+
+---
+
+# MOST IMPORTANT PROMPT TYPES TO LEARN FIRST
+
+For everyday AI engineering, focus on these first:
+
+```text
+1. Zero-Shot
+2. Few-Shot
+3. Role Prompting
+4. Context Prompting
+5. Constraint Prompting
+6. Structured Prompting
+7. Output Format Prompting
+8. Negative Prompting
+9. Classification
+10. Extraction
+11. Summarization
+12. Chat Prompt
+13. Prompt + Streaming
+14. Prompt + Chain
+15. Prompt + Parser
+```
+
+### Simple Mental Model
+
+```text
+                    PROMPT
+                       |
+       ┌───────────────┼────────────────┐
+       ↓               ↓                ↓
+   Instruction       Context         Examples
+       |               |                |
+       ↓               ↓                ↓
+   Constraints      Data          Few-Shot
+       |               |                |
+       └───────────────┼────────────────┘
+                       ↓
+                      LLM
+                       ↓
+                 Output Format
+                       ↓
+                    Parser
+```
+
+### Most Common LangChain Flow
+
+```js
+const prompt = PromptTemplate.fromTemplate(`
+Explain {topic} in {length} length.
+`);
+
+const chain = prompt
+  .pipe(llm)
+  .pipe(new StringOutputParser());
+
+const result = await chain.invoke({
+  topic: "JavaScript Closures",
+  length: "Medium",
+});
+
+console.log(result);
+```
+
+Remember:
+
+```text
+PromptTemplate
+      ↓
+    format()
+      ↓
+    Prompt
+      ↓
+    invoke()
+      ↓
+    Response
+```
+
+Or with a chain:
+
+```text
+PromptTemplate
+      ↓
+    pipe()
+      ↓
+      LLM
+      ↓
+    Parser
+      ↓
+   invoke()
+      ↓
+    Result
+```

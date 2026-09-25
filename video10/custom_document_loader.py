@@ -1,0 +1,1 @@
+# By creatign a class we can create a custom document loader that can be used to load documents from a specific source or format. This can be useful if you have documents that are not in a standard format or if you want to load documents from a specific location.
