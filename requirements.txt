@@ -5,3 +5,4 @@ python-dotenv>=1,<2
 pydantic>=2,<3
 pypdf>=6,<7
 beautifulsoup4>=4.12,<5
+langchain-experimental>=0.4,<0.5
