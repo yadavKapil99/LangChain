@@ -14,7 +14,7 @@ dependencies = {file = ["requirements.txt"]}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["common*", "video3*", "video4*", "video5*", "video6*", "video7*", "video10*", "video11*"]
+include = ["common*", "video3*", "video4*", "video5*", "video6*", "video7*", "video10*", "video11*", "video12*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.txt"]
